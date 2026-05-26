@@ -79,13 +79,27 @@ function Index() {
 
       setUploadedPhotoUrl(publicUrl);
 
-      // 3. Trigger mock analysis simulation
-      setTimeout(() => {
-        const result = { ...mockAnalysisResult, isMock: true };
-        setAnalysisResult(result);
-        setAnalysisDone(true);
-        track("analysis_complete", { score: result.score, isMock: true });
-      }, 2000);
+      // 3. Trigger visual AI analysis on the server using GPT-4o-mini
+      const analyzeResponse = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          imageUrl: publicUrl,
+          surface: surface,
+        }),
+      });
+
+      if (!analyzeResponse.ok) {
+        const errData = await analyzeResponse.json();
+        throw new Error(errData.error || "Chyba při komunikaci s AI serverem.");
+      }
+
+      const result = await analyzeResponse.json();
+      setAnalysisResult(result);
+      setAnalysisDone(true);
+      track("analysis_complete", { score: result.score, isMock: false });
 
     } catch (err: any) {
       console.error("[Storage Upload] Error:", err);
