@@ -21,8 +21,10 @@ function Index() {
   const [surface, setSurface] = useState<SurfaceType | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [analysisDone, setAnalysisDone] = useState(false);
-  const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [leadData, setLeadData] = useState<LeadData | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
+  const [leadId, setLeadId] = useState<string | null>(null);
 
   useEffect(() => {
     track("page_view");
@@ -30,19 +32,23 @@ function Index() {
 
   const handleFileSelect = useCallback((file: File, preview: string) => {
     setPreviewUrl(preview);
+    setSelectedFile(file);
   }, []);
 
   const handleClear = useCallback(() => {
     setPreviewUrl(null);
     setSurface(null);
+    setSelectedFile(null);
+    setUploadedPhotoUrl(null);
+    setLeadId(null);
   }, []);
 
   const handleSurfaceSelect = useCallback((s: SurfaceType) => {
     setSurface(s);
   }, []);
 
-  const handleAnalyze = useCallback(() => {
-    if (!previewUrl || !surface) {
+  const handleAnalyze = useCallback(async () => {
+    if (!previewUrl || !surface || !selectedFile) {
       toast.error("Vyberte fotografii a typ povrchu.");
       return;
     }
@@ -50,44 +56,99 @@ function Index() {
     track("analysis_started");
     setAnalysisResult(null);
     setAnalysisDone(false);
-    setAnalysisId(crypto.randomUUID());
     setView("loading");
 
-    // Simulate API call with mock data (backend not wired yet)
-    setTimeout(() => {
-      const result = { ...mockAnalysisResult, isMock: true };
-      setAnalysisResult(result);
-      setAnalysisDone(true);
-      track("analysis_complete", { score: result.score, isMock: true });
-    }, 2000);
-  }, [previewUrl, surface]);
+    try {
+      // 1. Upload photo to Supabase Storage bucket 'surface-images'
+      const fileExt = selectedFile.name.split(".").pop();
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("surface-images")
+        .upload(fileName, selectedFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      // 2. Get Public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from("surface-images")
+        .getPublicUrl(fileName);
+
+      setUploadedPhotoUrl(publicUrl);
+
+      // 3. Trigger mock analysis simulation
+      setTimeout(() => {
+        const result = { ...mockAnalysisResult, isMock: true };
+        setAnalysisResult(result);
+        setAnalysisDone(true);
+        track("analysis_complete", { score: result.score, isMock: true });
+      }, 2000);
+
+    } catch (err: any) {
+      console.error("[Storage Upload] Error:", err);
+      toast.error("Nahrávání snímku selhalo: " + err.message);
+      setView("intro");
+    }
+  }, [previewUrl, surface, selectedFile]);
 
   const handleLoadingComplete = useCallback(() => {
     setView("lead");
   }, []);
 
-  const handleLeadSubmit = useCallback((data: LeadData) => {
+  const handleLeadSubmit = useCallback(async (data: LeadData) => {
     setLeadData(data);
     setView("results");
 
-    // Submit lead asynchronously to Supabase Database
-    supabase
+    // Map urgency level to the client's schema: "nízká" | "střední" | "vysoká"
+    const urgencyMapping: Record<string, string> = {
+      "Doporučit ihned": "vysoká",
+      "Do 3 měsíců": "střední",
+      "Preventivní ošetření": "nízká",
+    };
+    const mappedUrgency = urgencyMapping[analysisResult?.urgency ?? ""] || "střední";
+
+    // Format analysis result as a structured text block for the admin panel's text window
+    const serializedAnalysis = analysisResult
+      ? `Skóre znečištění: ${analysisResult.score}/10 (${analysisResult.label})
+Odhadované zlepšení: ${analysisResult.improvementPercent}%
+
+Složení znečištění:
+${analysisResult.breakdown.map((b) => `- ${b.label}: ${b.value}%`).join("\n")}
+
+Doporučení:
+${analysisResult.recommendations.map((r) => `- ${r}`).join("\n")}`
+      : "";
+
+    const leadPayload = {
+      name: data.name,
+      email: data.email,
+      phone: data.phone || null,
+      object_type: data.propertyType || null,
+      analysis_type: surface || null,
+      urgency: mappedUrgency,
+      original_photo_url: uploadedPhotoUrl || "",
+      before_photo_url: uploadedPhotoUrl || null,
+      after_photo_url: uploadedPhotoUrl || null, // Will represent cleaned state in visualization
+      analysis_result: serializedAnalysis,
+      status: "new",
+    };
+
+    const { data: inserted, error } = await supabase
       .from("leads")
-      .insert({
-        name: data.name,
-        phone: data.phone,
-        email: data.email,
-        property_type: data.propertyType,
-        surface: surface ?? null,
-        score: analysisResult?.score ?? null,
-        label: analysisResult?.label ?? null,
-        urgency: analysisResult?.urgency ?? null,
-        source: "analyzer",
-      })
-      .then(({ error }) => {
-        if (error) console.error("lead insert failed", error);
-      });
-  }, [surface, analysisResult]);
+      .insert(leadPayload)
+      .select("id")
+      .single();
+
+    if (error) {
+      console.error("[Leads Database] Insert error:", error);
+      toast.error("Uložení kontaktu selhalo: " + error.message);
+    } else if (inserted) {
+      setLeadId(inserted.id);
+    }
+  }, [surface, analysisResult, uploadedPhotoUrl]);
 
   const handleRestart = useCallback(() => {
     setView("intro");
@@ -95,8 +156,10 @@ function Index() {
     setSurface(null);
     setAnalysisResult(null);
     setAnalysisDone(false);
-    setAnalysisId(null);
     setLeadData(null);
+    setSelectedFile(null);
+    setUploadedPhotoUrl(null);
+    setLeadId(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
@@ -132,6 +195,7 @@ function Index() {
             leadName={leadData?.name ?? ""}
             leadPhone={leadData?.phone ?? ""}
             leadEmail={leadData?.email ?? ""}
+            leadId={leadId}
             onRestart={handleRestart}
           />
         ) : null}

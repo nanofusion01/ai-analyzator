@@ -13,6 +13,7 @@ interface ResultsViewProps {
   leadName: string;
   leadPhone: string;
   leadEmail: string;
+  leadId: string | null;
   onRestart: () => void;
 }
 
@@ -74,6 +75,7 @@ export function ResultsView({
   leadName,
   leadPhone,
   leadEmail,
+  leadId,
   onRestart,
 }: ResultsViewProps) {
   const [description, setDescription] = useState("");
@@ -86,19 +88,42 @@ export function ResultsView({
 
     track("quote_submitted");
 
-    const { error } = await supabase.from("leads").insert({
-      name: leadName,
-      phone: leadPhone,
-      email: leadEmail,
-      surface,
-      score: analysis.score,
-      label: analysis.label,
-      urgency: analysis.urgency,
-      description: description.trim(),
-      timeline,
-      source: "quote",
-    });
-    if (error) console.error("quote insert failed", error);
+    const quoteNotes = `Poptávka odeslána:
+Popis povrchu: ${description.trim()}
+Preferovaný termín: ${timeline}`;
+
+    if (leadId) {
+      // 1. If we have a lead ID, update the existing record to avoid duplication
+      const { error } = await supabase
+        .from("leads")
+        .update({
+          additional_notes: quoteNotes,
+        })
+        .eq("id", leadId);
+
+      if (error) console.error("[Leads Database] Quote update failed:", error);
+    } else {
+      // 2. Fallback: if no leadId, insert a new record matching their columns
+      const urgencyMapping: Record<string, string> = {
+        "Doporučit ihned": "vysoká",
+        "Do 3 měsíců": "střední",
+        "Preventivní ošetření": "nízká",
+      };
+      const mappedUrgency = urgencyMapping[analysis.urgency] || "střední";
+
+      const { error } = await supabase.from("leads").insert({
+        name: leadName,
+        phone: leadPhone || null,
+        email: leadEmail,
+        analysis_type: surface,
+        urgency: mappedUrgency,
+        original_photo_url: imageUrl,
+        additional_notes: quoteNotes,
+        status: "new",
+      });
+      if (error) console.error("[Leads Database] Quote fallback insert failed:", error);
+    }
+
     setQuoteSubmitted(true);
   };
 
