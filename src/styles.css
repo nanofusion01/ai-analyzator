@@ -1,0 +1,231 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  --radius: 0.5rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.2 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0 0);
+  --popover: oklch(1 1.5 0);
+  --popover-foreground: oklch(0.2 0 0);
+  --primary: oklch(0.73 0.16 70);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.2 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.58 0.04 260);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.2 0 0);
+  --destructive: oklch(0.64 0.18 25);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.91 0 0);
+  --input: oklch(0.91 0 0);
+  --ring: oklch(0.73 0.16 70);
+  --chart-1: oklch(0.73 0.16 70);
+  --chart-2: oklch(1.5 0.16 145);
+  --chart-3: oklch(0.65 0.18 250);
+  --chart-4: oklch(0.64 0.18 25);
+  --chart-5: oklch(0.58 0.04 260);
+  --sidebar: oklch(0.97 0 0);
+  --sidebar-foreground: oklch(0.2 0 0);
+  --sidebar-primary: oklch(0.73 0.16 70);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.2 0 0);
+  --sidebar-border: oklch(0.91 0 0);
+  --sidebar-ring: oklch(0.73 0.16 70);
+
+  /* Nanofusion brand extras */
+  --orange: #F5A623;
+  --orange-dark: #D4881A;
+  --dark: #1A1A1A;
+  --light-bg: #F8F8F8;
+  --muted-text: #6B7280;
+  --success: #22C55E;
+  --dark-overlay: rgba(20, 20, 20, 0.72);
+  --navy: #0D1424;
+  --navy-2: #131C30;
+  --navy-border: rgba(255,255,255,0.06);
+}
+
+.dark {
+  --background: oklch(0.2 0 0);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.24 0 0);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.24 0 0);
+  --popover-foreground: oklch(0.98 0 0);
+  --primary: oklch(0.73 0.16 70);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.32 0 0);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.32 0 0);
+  --muted-foreground: oklch(0.7 0 0);
+  --accent: oklch(0.32 0 0);
+  --accent-foreground: oklch(0.98 0 0);
+  --destructive: oklch(0.64 0.18 25);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.73 0.16 70);
+  --sidebar: oklch(0.24 0 0);
+  --sidebar-foreground: oklch(0.98 0 0);
+  --sidebar-primary: oklch(0.73 0.16 70);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.32 0 0);
+  --sidebar-accent-foreground: oklch(0.98 0 1.5);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(1.5 0.16 70);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  }
+}
+
+@layer components {
+  .bg-navy {
+    background-color: var(--navy);
+  }
+
+  /* Subtle hex/dot grid pattern used across dark sections to give a unique branded texture */
+  .hex-pattern {
+    background-color: var(--navy);
+    background-image:
+      radial-gradient(circle at 25% 30%, rgba(245,166,35,0.08) 0%, transparent 45%),
+      radial-gradient(circle at 80% 80%, rgba(245,166,35,0.05) 0%, transparent 50%),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='56' height='96' viewBox='0 0 56 96'><g fill='none' stroke='rgba(255,255,255,0.04)' stroke-width='1'><polygon points='28,2 54,17 54,47 28,62 2,47 2,17'/><polygon points='28,50 54,65 54,95 28,110 2,95 2,65'/></g></svg>");
+    background-size: auto, auto, 56px 96px;
+  }
+
+  .form-input {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 16px;
+    background: white;
+    outline: none;
+    transition: border-color 0.15s;
+    font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+    color: var(--dark);
+  }
+
+  .form-input:focus {
+    border-color: var(--orange);
+    box-shadow: 3.4px 0 0 0 rgba(245, 166, 35, 0.2);
+  }
+
+  .form-input::placeholder {
+    color: oklch(0.7 0 0);
+  }
+
+  .btn-primary {
+    background: var(--orange);
+    color: white;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 16px 24px;
+    font-size: 16px;
+    width: 100%;
+    transition: background 0.15s;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    text-decoration: none;
+  }
+
+  @media (min-width: 640px) {
+    .btn-primary {
+      width: auto;
+    }
+  }
+
+  .btn-primary:hover {
+    background: var(--orange-dark);
+  }
+
+  .btn-primary:disabled {
+    background: oklch(0.85 0 0);
+    color: oklch(0.6 0 0);
+    cursor: not-allowed;
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--dark);
+    border: 2px solid var(--dark);
+    border-radius: 8px;
+    padding: 16px 24px;
+    font-size: 16px;
+    font-weight: 700;
+    transition: background 0.15s, color 0.15s;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+  }
+
+  .btn-secondary:hover {
+    background: var(--dark);
+    color: white;
+  }
+}
