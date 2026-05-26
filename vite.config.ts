@@ -23,7 +23,8 @@ export default defineConfig(async ({ command, mode }) => {
   ];
 
   // Dynamically import and push the Cloudflare Vite plugin during the production build step.
-  if (command === "build") {
+  // We skip this plugin when building on Vercel (process.env.VERCEL is defined) to prevent build conflicts.
+  if (command === "build" && !process.env.VERCEL) {
     try {
       const { cloudflare } = await import("@cloudflare/vite-plugin");
       plugins.push(
