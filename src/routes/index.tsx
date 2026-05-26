@@ -93,7 +93,11 @@ function Index() {
 
       if (!analyzeResponse.ok) {
         const errData = await analyzeResponse.json();
-        throw new Error(errData.error || "Chyba při komunikaci s AI serverem.");
+        throw new Error(
+          errData.details 
+            ? `${errData.error} (${errData.details})` 
+            : (errData.error || "Chyba při komunikaci s AI serverem.")
+        );
       }
 
       const result = await analyzeResponse.json();
