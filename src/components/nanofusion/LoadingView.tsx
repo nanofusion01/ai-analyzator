@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Stepper } from "./Stepper";
 import { NANO_TIPS } from "@/lib/nano-tips";
+import type { NanoTip } from "@/lib/nano-tips";
+import { supabase } from "@/integrations/supabase/client";
 
 interface LoadingViewProps {
   onComplete: () => void;
@@ -18,6 +20,8 @@ const STATUS_MESSAGES = [
 ];
 
 export function LoadingView({ onComplete, apiDone, isActive }: LoadingViewProps) {
+  const [tips, setTips] = useState<NanoTip[]>(NANO_TIPS);
+  const tipsRef = useRef<NanoTip[]>(NANO_TIPS);
   const [progress, setProgress] = useState(0);
   const [statusIndex, setStatusIndex] = useState(0);
   const [tipIndex, setTipIndex] = useState(0);
@@ -27,13 +31,41 @@ export function LoadingView({ onComplete, apiDone, isActive }: LoadingViewProps)
   const hasCompleted = useRef(false);
   const prevActive = useRef(false);
 
+  // Sync ref with state to prevent stale closure in interval
+  useEffect(() => {
+    tipsRef.current = tips;
+  }, [tips]);
+
+  // Fetch tips from Supabase on mount
+  useEffect(() => {
+    async function fetchTips() {
+      try {
+        const { data, error } = await supabase
+          .from("site_config")
+          .select("value")
+          .eq("key", "nano_tips")
+          .single();
+        
+        if (data && data.value) {
+          const parsed = JSON.parse(data.value);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setTips(parsed);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load nano tips from Supabase, using local fallback:", err);
+      }
+    }
+    fetchTips();
+  }, []);
+
   // Reset and start animation when becoming active
   useEffect(() => {
     if (isActive && !prevActive.current) {
       prevActive.current = true;
       setProgress(0);
       setStatusIndex(0);
-      setTipIndex(Math.floor(Math.random() * NANO_TIPS.length));
+      setTipIndex(Math.floor(Math.random() * tipsRef.current.length));
       hasCompleted.current = false;
 
       const totalDuration = 8001;
@@ -58,7 +90,7 @@ export function LoadingView({ onComplete, apiDone, isActive }: LoadingViewProps)
       }, 2000);
 
       tipRef.current = setInterval(() => {
-        setTipIndex((prev) => (prev + 1) % NANO_TIPS.length);
+        setTipIndex((prev) => (prev + 1) % tipsRef.current.length);
       }, 4500);
     }
 
@@ -94,7 +126,7 @@ export function LoadingView({ onComplete, apiDone, isActive }: LoadingViewProps)
 
   const displayProgress = Math.round(progress);
   const statusText = apiDone ? "Zpracovávám výsledky..." : STATUS_MESSAGES[statusIndex % STATUS_MESSAGES.length];
-  const tip = NANO_TIPS[tipIndex % NANO_TIPS.length];
+  const tip = tips[tipIndex % tips.length] || NANO_TIPS[0];
 
   return (
     <div className="min-h-screen px-4 py-12" style={{ background: "var(--light-bg)" }}>
@@ -154,11 +186,11 @@ export function LoadingView({ onComplete, apiDone, isActive }: LoadingViewProps)
             </span>
             <div className="flex-1 h-px" style={{ background: "rgba(245,166,35,0.2)" }} />
             <div className="flex gap-1">
-              {NANO_TIPS.map((_, i) => (
+              {tips.map((_, i) => (
                 <span
                   key={i}
                   className="w-1 h-1 rounded-full transition-colors"
-                  style={{ background: i === tipIndex % NANO_TIPS.length ? "var(--orange)" : "rgba(245,166,35,0.25)" }}
+                  style={{ background: i === tipIndex % tips.length ? "var(--orange)" : "rgba(245,166,35,0.25)" }}
                 />
               ))}
             </div>
