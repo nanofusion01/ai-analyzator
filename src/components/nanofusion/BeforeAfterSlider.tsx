@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 interface BeforeAfterSliderProps {
   imageUrl: string;
+  afterImageUrl?: string;
   leftLabel?: string;
   rightLabel?: string;
   sliderColor?: string;
@@ -10,6 +11,7 @@ interface BeforeAfterSliderProps {
 
 export function BeforeAfterSlider({
   imageUrl,
+  afterImageUrl,
   leftLabel = "DNES",
   rightLabel = "PO NANOFUSION",
   sliderColor = "#F5A623",
@@ -77,26 +79,26 @@ export function BeforeAfterSlider({
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
-      {/* Left image (original) */}
+      {/* Base image — PO NANOFUSION (cleaned / filtered) — visible on right side */}
       <img
-        src={imageUrl}
-        alt="Před ošetřením"
+        src={afterImageUrl || imageUrl}
+        alt="Po ošetření"
         className="block w-full h-auto"
+        style={afterImageUrl ? {} : { filter: "brightness(1.15) contrast(1.05) saturate(1.1) hue-rotate(-2deg)" }}
         draggable={false}
       />
 
-      {/* Right overlay with clip */}
+      {/* Left overlay — DNES (original, dirty) — clipped from left to slider position */}
       <div
-        className="absolute inset-1.5 overflow-hidden"
+        className="absolute inset-0 overflow-hidden"
         style={{ left: 0, width: `${pct}%` }}
       >
         <img
           src={imageUrl}
-          alt="Po ošetření"
+          alt="Před ošetřením"
           className="block h-full max-w-none object-cover"
           style={{
             width: containerRef.current ? containerRef.current.offsetWidth : "100%",
-            filter: "brightness(1.2) contrast(1.08) saturate(1.3)",
           }}
           draggable={false}
         />

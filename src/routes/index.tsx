@@ -15,6 +15,58 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
+function compressImage(file: File, maxW: number = 1200, maxH: number = 1200): Promise<File> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let w = img.width;
+        let h = img.height;
+        if (w > h) {
+          if (w > maxW) {
+            h = Math.round((h * maxW) / w);
+            w = maxW;
+          }
+        } else {
+          if (h > maxH) {
+            w = Math.round((w * maxH) / h);
+            h = maxH;
+          }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                type: "image/jpeg",
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          },
+          "image/jpeg",
+          0.85
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
 function Index() {
   const [view, setView] = useState<AppView>("intro");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -24,6 +76,7 @@ function Index() {
   const [leadData, setLeadData] = useState<LeadData | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState<string | null>(null);
+  const [cleanedImageUrl, setCleanedImageUrl] = useState<string | null>(null);
   const [leadId, setLeadId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -59,13 +112,24 @@ function Index() {
     setView("loading");
 
     try {
+      // Compress the image before uploading to avoid timeouts on slower networks
+      let fileToUpload = selectedFile;
+      try {
+        fileToUpload = await compressImage(selectedFile);
+      } catch (compressErr) {
+        console.warn("Client-side compression failed, uploading original:", compressErr);
+      }
+
       // 1. Upload photo to Supabase Storage bucket 'surface-images'
-      const fileExt = selectedFile.name.split(".").pop();
-      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      const fileExt = fileToUpload.name.split(".").pop();
+      const randomId = (typeof crypto !== "undefined" && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      const fileName = `${randomId}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
         .from("surface-images")
-        .upload(fileName, selectedFile, {
+        .upload(fileName, fileToUpload, {
           cacheControl: '3600',
           upsert: false
         });
@@ -79,17 +143,22 @@ function Index() {
 
       setUploadedPhotoUrl(publicUrl);
 
-      // 3. Trigger visual AI analysis on the server using GPT-4o-mini
-      const analyzeResponse = await fetch("/api/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          imageUrl: publicUrl,
-          surface: surface,
+      // 3. Trigger visual AI analysis AND image generation in parallel
+      const [analyzeResponse, cleanResponse] = await Promise.all([
+        fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageUrl: publicUrl, surface }),
         }),
-      });
+        fetch("/api/generate-clean", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageUrl: publicUrl, surface }),
+        }).catch((err) => {
+          console.warn("[Generate Clean] Failed, will use CSS fallback:", err);
+          return null;
+        }),
+      ]);
 
       if (!analyzeResponse.ok) {
         const errData = await analyzeResponse.json();
@@ -101,7 +170,22 @@ function Index() {
       }
 
       const result = await analyzeResponse.json();
+      console.log("[Index handleAnalyze] API result received:", result);
       setAnalysisResult(result);
+
+      // Process cleaned image if generation succeeded
+      if (cleanResponse && cleanResponse.ok) {
+        try {
+          const cleanData = await cleanResponse.json();
+          if (cleanData.cleanedImageUrl) {
+            setCleanedImageUrl(cleanData.cleanedImageUrl);
+            console.log("[Index handleAnalyze] AI cleaned image received.");
+          }
+        } catch (e) {
+          console.warn("[Generate Clean] Failed to parse response:", e);
+        }
+      }
+
       setAnalysisDone(true);
       track("analysis_complete", { score: result.score, isMock: false });
 
@@ -177,6 +261,7 @@ ${analysisResult.recommendations.map((r) => `- ${r}`).join("\n")}`
     setLeadData(null);
     setSelectedFile(null);
     setUploadedPhotoUrl(null);
+    setCleanedImageUrl(null);
     setLeadId(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
@@ -208,6 +293,7 @@ ${analysisResult.recommendations.map((r) => `- ${r}`).join("\n")}`
         {analysisResult && previewUrl && surface ? (
           <ResultsView
             imageUrl={previewUrl}
+            afterImageUrl={cleanedImageUrl || undefined}
             surface={surface}
             analysis={analysisResult}
             leadName={leadData?.name ?? ""}

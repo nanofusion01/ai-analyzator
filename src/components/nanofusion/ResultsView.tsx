@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface ResultsViewProps {
   imageUrl: string;
+  afterImageUrl?: string;
   surface: SurfaceType;
   analysis: AnalysisResult;
   leadName: string;
@@ -70,6 +71,7 @@ function UrgencyBadge({ urgency }: { urgency: string }) {
 
 export function ResultsView({
   imageUrl,
+  afterImageUrl,
   surface,
   analysis,
   leadName,
@@ -172,7 +174,7 @@ Preferovaný termín: ${timeline}`;
           <div className="p-4 pb-2">
             <h4 className="text-base font-bold text-[var(--dark)]">Vizualizace výsledku</h4>
           </div>
-          <BeforeAfterSlider imageUrl={imageUrl} />
+          <BeforeAfterSlider imageUrl={imageUrl} afterImageUrl={afterImageUrl} />
           <p className="p-3 text-center text-xs text-[var(--muted-text)] italic">
             * Vizualizace je ilustrativní. Výsledek závisí na typu a rozsahu znečištění.
           </p>
